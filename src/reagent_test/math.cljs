@@ -2,7 +2,6 @@
 	(:require [goog.string :as gstring]
 			  [goog.string.format]
 			  [cljs.reader :as reader]
-			  [clojure.string :as string]
 			  [reagent-test.state :refer [app-state value]]))
 
 
@@ -14,14 +13,27 @@
 (defn valid-number? [a]
 	((every-pred number? pos?) a))
 
+
 (defn- add-leading-zero [s]
 	(if (and (string? s) (re-matches #"^\.\d+" s)) (str "0" s) s))
 
+
+(defn half-baked-number? [s]
+	(and (symbol? s)
+		 (re-matches #"^\.\d+" (str s))))
+
+
 (defn- convert-string-to-symbols [s]
-	(map (comp reader/read-string add-leading-zero) (string/split s #" ")))
+	(doall (for [i (reader/read-string (str \[ s \]))]
+			   (cond
+				   (number? i) i
+				   (half-baked-number? i) (-> i name add-leading-zero reader/read-string)
+				   :else nil))))
+
 
 (defn calculate-string [s]
 	(apply + (filter valid-number? (convert-string-to-symbols s))))
+
 
 (defn invalid-symbols? [s]
 	((complement empty?) (filter (complement valid-number?) (convert-string-to-symbols s))))
@@ -29,6 +41,7 @@
 
 (defn get-cell [row col]
 	(get-in (:cells @app-state) [row col] ""))
+
 
 (defn get-col [col]
 	(apply + (map calculate-string (map #(get-in (:cells @app-state) [% col]) (range (count (:users @app-state)))))))

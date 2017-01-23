@@ -11,6 +11,7 @@
 				   [org.clojure/core.async "0.2.391"
 					:exclusions [org.clojure/tools.reader]]
 				   [cljs-react-material-ui "0.2.36"]
+				   [datascript "0.15.5"]
 				   [reagent "0.6.0" :exclusions [cljsjs/react cljsjs/react-dom]]]
 
 	:plugins [[lein-figwheel "0.5.8"]

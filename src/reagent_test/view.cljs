@@ -1,9 +1,12 @@
 (ns reagent-test.view
 	(:require [cljs-react-material-ui.reagent :as rui]
-			  [reagent-test.state :refer [app-state value dialog?]]
+			  [reagent.core :as r :refer [atom]]
+			  [reagent-test.state :refer [app-state value]]
 			  [reagent-test.math :as math]
 			  ))
 
+(defn enumerate [coll]
+	(map-indexed (fn [a b] (merge b {:no (inc a)})) coll))
 
 
 (defn event-value [evt]
@@ -12,22 +15,25 @@
 		(.-value)))
 
 
-(defn price-list []
-	[rui/table {:selectable false :width 100}
-	 [rui/table-header {:displaySelectAll  false
-						:adjustForCheckbox false}
-	  [rui/table-row
-	   [rui/table-header-column "Title"]
-	   [rui/table-header-column "Price"]]]
+(defn price-list [products]
+	[:div {:style {:width "90%"}}
+	 [:h1 "Price list"]
+	 [:div {:style {:width "400px"}}
+	  [rui/table {:selectable false :width 100}
+	   [rui/table-header {:displaySelectAll  false
+						  :adjustForCheckbox false}
+		[rui/table-row
+		 [rui/table-header-column "Title"]
+		 [rui/table-header-column "Price"]]]
 
 
-	 [rui/table-body {:displayRowCheckbox false}
-	  (for [[id {:keys [title price]}] (map-indexed vector (:price-list @app-state))]
-		  ^{:key (str "price-" id)}
-		  [rui/table-row
-		   [rui/table-row-column title]
-		   [rui/table-row-column price]])
-	  ]])
+	   [rui/table-body {:displayRowCheckbox false}
+		(for [product products]
+			^{:key (str "price-" (:db/id product))}
+			[rui/table-row
+			 [rui/table-row-column (:product/title product)]
+			 [rui/table-row-column (:product/price product)]])
+		]]]])
 
 
 (defn editable-cell [row col]
@@ -82,10 +88,8 @@
 		 [rui/table-row-column (math/format-number (apply + (map math/get-row users)) "UAH")]]))
 
 
-
-(defn user-list []
-	(let [products (map-indexed vector (:price-list @app-state))
-		  users (map-indexed vector (:users @app-state))]
+(defn user-list [products users]
+	(let [products (enumerate products)]
 		[rui/table {:selectable  false
 					:width       100
 					:onCellClick (fn [row col evt]
@@ -106,37 +110,43 @@
 		   [rui/table-header-column "Name"]
 
 		   (interleave
-			   (doall (for [[id {:keys [title]}] products]
-						  ^{:key (str "title-" id)}
-						  [rui/table-header-column title]))
-			   (doall (for [[id {:keys [title]}] products]
-						  ^{:key (str "price-title-" id)}
-						  [rui/table-header-column (str "x " (math/format-number (math/get-price id)))])))
+			   (doall (for [product products]
+						  ^{:key (str "title-" (:no product))}
+						  [rui/table-header-column (:product/title product)]))
+			   (doall (for [product products]
+						  ^{:key (str "price-title-" (:no product))}
+						  [rui/table-header-column (str "x " (math/format-number (:product/price product)))])))
 
 		   [rui/table-header-column "Sub Total"]]]
 
 
 		 [rui/table-body {:displayRowCheckbox false}
-		  (doall (for [[no user] users]
-					 ^{:key (str "user-" no)}
-					 [rui/table-row
-					  [rui/table-row-column {:style {:width 50}} (inc no)]
-					  [rui/table-row-column (:name user)]
+		  (doall (for [user (enumerate users)]
+					 (let [no (:no user)
+						   name (:person/name user)]
+						 ^{:key (str "user-" no)}
+						 [rui/table-row
+						  [rui/table-row-column {:style {:width 50}} no]
+						  [rui/table-row-column name]
 
-					  (interleave
-						  (doall (for [[id product] products]
-									 ^{:key (str "editable-cell-" id)}
-									 (editable-cell no id)))
+						  #_(interleave
+								(doall (for [product products]
+										   ^{:key (str "editable-cell-" (:no product))}
+										   (editable-cell no (:no product))))
 
-						  (doall (for [[id product] products]
-									 ^{:key (str "prod" id)}
-									 [rui/table-row-column (math/format-number (* (math/calculate-string (math/get-cell no id)) (math/get-price id)) "UAH")])))
+								(doall (for [product products]
+										   ^{:key (str "prod" (:no product))}
+										   [rui/table-row-column "XXX"]
+										   #_[rui/table-row-column (str '(math/format-number (* (math/calculate-string (math/get-cell no id)) (math/get-price id)) "UAH"))]
+										   )))
 
-					  [rui/table-row-column (math/format-number (math/get-row no) "UAH")]]))]
-		 [rui/table-footer [total-row]]
-		 ]))
 
-(defn new-user-dialog []
+						  #_[rui/table-row-column (math/format-number (math/get-row no) "UAH")]
+						  [rui/table-row-column "YYY"]]
+						 )))]]))
+
+
+(defn new-user-dialog [dialog? add-user]
 	(let [val (atom "")]
 		[rui/dialog {:open  true
 					 :modal false
@@ -147,17 +157,15 @@
 		   [:div {:class "col-sm-6"}
 			[rui/text-field {:hintText           "Name"
 							 :floatingLabelFixed true
-							 :floatingLabelText  "New user's name"
+							 :floatingLabelText  "User's name"
 							 :onChange           #(reset! val (event-value %))
 							 :defaultValue       @val
-							 :auto-focus         true
-							 }
-			 ]]]
+							 :auto-focus         true}]]]
 		  [:div {:class "row"}
 		   [:div {:class "col-sm-3"}
 			[rui/raised-button {:label   "OK"
 								:primary true
-								:onClick #(do (swap! app-state assoc-in [:users] (cons {:name @val} (:users @app-state)))
+								:onClick #(do (add-user @val)
 											  (reset! dialog? false))}]]
 		   [:div {:class "col-sm-3"}
 			[rui/raised-button {:label   "Cancel"
@@ -165,23 +173,22 @@
 		 ]))
 
 
-(defn application []
-	[rui/mui-theme-provider
-	 [:div {:style {:width "90%"}}
-	  [:h1 "Price list"]
+(defn users-component [products users add-user]
+	(let [dialog? (atom false)]
+		(fn []
+			[:div
+			 [:h1 "Users"]
+			 [:div {:style {:text-align "right"}}
+			  (if @dialog?
+				  [new-user-dialog dialog? add-user]
+				  [rui/raised-button
+				   {:label   "Add new user"
+					:primary true
+					:onClick #(reset! dialog? true)
+					}])
 
-	  [:div {:style {:width "400px"}}
-	   [price-list]]
+			  [user-list products users]]])))
 
+#_[rui/table-footer [total-row]]
+;]))
 
-	  [:h1 "Users"]
-	  [:div {:style {:text-align "right"}}
-	   (if (true? @dialog?)
-		   [new-user-dialog]
-		   [rui/raised-button
-			{:label   "Add new user"
-			 :primary true
-			 :onClick #(reset! dialog? true)
-			 }])
-
-	   [user-list]]]])

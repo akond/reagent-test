@@ -1,6 +1,6 @@
 (defproject reagent-test "0.1.0-SNAPSHOT"
-	:description "FIXME: write this!"
-	:url "http://example.com/FIXME"
+	:description "Reagent simple application"
+	:url "https://github.com/akond/reagent-test/"
 	:license {:name "Eclipse Public License"
 			  :url  "http://www.eclipse.org/legal/epl-v10.html"}
 
@@ -57,10 +57,10 @@
 			   ;; :server-port 3449 ;; default
 			   ;; :server-ip "127.0.0.1"
 
-			   :css-dirs ["resources/public/css"]                    ;; watch and update CSS
+			   :css-dirs   ["resources/public/css"]                  ;; watch and update CSS
 
-			   ;; Start an nREPL server into the running figwheel process
-			   ;; :nrepl-port 7888
+			   ;;Start an nREPL server into the running figwheel process
+			   :nrepl-port 7888
 
 			   ;; Server Ring Handler (optional)
 			   ;; if you want to embed a ring handler into the figwheel http-kit
@@ -93,6 +93,8 @@
 	;; setting up nREPL for Figwheel and ClojureScript dev
 	;; Please see:
 	;; https://github.com/bhauman/lein-figwheel/wiki/Using-the-Figwheel-REPL-within-NRepl
+	;; (use 'figwheel-sidecar.repl-api)
+	;; (cljs-repl)
 
 
 	:profiles {:dev {:dependencies [[binaryage/devtools "0.8.2"]
